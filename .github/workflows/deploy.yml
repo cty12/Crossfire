@@ -1,0 +1,70 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            substituters = https://cache.nixos.org https://haskell-miso-cachix.cachix.org
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= haskell-miso-cachix.cachix.org-1:m8hN1cvFMJtYib4tj+06xkKt5ABMSGfe8W7s40x1kQ0=
+
+      - name: Build
+        run: nix build
+
+      - name: Inspect build output
+        run: find result -type f | sort
+
+      - name: Prepare site
+        run: |
+          mkdir -p site
+          # Traditional GHCJS produces a .jsexe directory; GHC JS backend produces a single .js file
+          if [ -d result/bin/crossfire.jsexe ]; then
+            cp -r result/bin/crossfire.jsexe/. site/
+          else
+            cp result/bin/crossfire.js site/
+            cat > site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Crossfire</title>
+          </head>
+          <body>
+            <script src="crossfire.js"></script>
+          </body>
+          </html>
+          EOF
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
