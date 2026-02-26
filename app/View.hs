@@ -51,6 +51,14 @@ decodeMode :: MisoString -> GameMode
 decodeMode "pvc" = PvC
 decodeMode _     = PvP
 
+encodeDiff :: Difficulty -> MisoString
+encodeDiff Easy = "easy"
+encodeDiff Hard = "hard"
+
+decodeDiff :: MisoString -> Difficulty
+decodeDiff "hard" = Hard
+decodeDiff _      = Easy
+
 gameView :: Model -> View Msg
 gameView model =
   div_ [ style_ $ Map.fromList
@@ -75,25 +83,37 @@ gameView model =
              , ("gap",            "8px")
              ]
          ]
-      [ select_
+      ([ select_
           [ onChange (SelectMode . decodeMode)
           , value_   (encodeMode (gameMode model))
           , style_   controlStyle
           ]
-          [ option_ [ value_ "pvp" ] [ text "PvP" ]
-          , option_ [ value_ "pvc" ] [ text "PvC" ]
+          [ option_ [ value_ "pvp", selected_ (gameMode model == PvP) ] [ text "PvP" ]
+          , option_ [ value_ "pvc", selected_ (gameMode model == PvC) ] [ text "PvC" ]
           ]
-      , select_
+      ] ++
+      (if gameMode model == PvC
+        then [ select_
+                 [ onChange (SelectDiff . decodeDiff)
+                 , value_   (encodeDiff (difficulty model))
+                 , style_   controlStyle
+                 ]
+                 [ option_ [ value_ "easy", selected_ (difficulty model == Easy) ] [ text "Easy" ]
+                 , option_ [ value_ "hard", selected_ (difficulty model == Hard) ] [ text "Hard" ]
+                 ]
+             ]
+        else []) ++
+      [ select_
           [ onChange (SelectSize . decodeDims)
           , value_   (encodeDims (selectedDims model))
           , style_   controlStyle
           ]
-          [ option_ [ value_ "8,8"   ] [ text "8×8"   ]
-          , option_ [ value_ "8,12"  ] [ text "8×12"  ]
-          , option_ [ value_ "12,12" ] [ text "12×12" ]
+          [ option_ [ value_ "8,8",   selected_ (selectedDims model == (8,8))   ] [ text "8×8"   ]
+          , option_ [ value_ "8,12",  selected_ (selectedDims model == (8,12))  ] [ text "8×12"  ]
+          , option_ [ value_ "12,12", selected_ (selectedDims model == (12,12)) ] [ text "12×12" ]
           ]
       , button_ [ onClick Restart, style_ controlStyle ] [ text "New Game" ]
-      ]
+      ])
   ]
 
 statusMsg :: Model -> MisoString

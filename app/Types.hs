@@ -27,6 +27,11 @@ defaultDims = (8, 8)
 
 data GameMode = PvP | PvC deriving (Eq, Show)
 
+data Difficulty = Easy | Hard deriving (Eq, Show)
+
+defaultDifficulty :: Difficulty
+defaultDifficulty = Hard
+
 -- A launcher sits just outside one edge of the board and fires inward.
 data Launcher
   = TopL    Int   -- column, fires downward
@@ -44,6 +49,7 @@ data Model = Model
   , selectedDims :: Dims              -- pending selection from the dropdown
   , voids        :: Set (Int, Int)    -- interior void cells for the current game
   , gameMode     :: GameMode
+  , difficulty   :: Difficulty
   } deriving (Eq, Show)
 
 data Msg
@@ -54,5 +60,6 @@ data Msg
   | SelectSize Dims
   | SetVoids   (Set (Int, Int))
   | SelectMode GameMode
+  | SelectDiff Difficulty
   | NoOp
   deriving (Eq, Show)

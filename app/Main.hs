@@ -10,6 +10,7 @@ import           Language.Javascript.JSaddle.Warp (run)
 #endif
 
 import Logic
+import Strategies (strategyFor)
 import Types
 import View
 
@@ -19,9 +20,8 @@ import View
 triggerAI :: Model -> Effect Msg Model
 triggerAI m
   | gameMode m == PvC, curPlayer m == P2, phase m == Playing =
-      m <# return (case bestLauncher (activeDims m) (board m) (voids m) P2 of
-                     Just l  -> AIMove l
-                     Nothing -> NoOp)
+      let pick = strategyFor (difficulty m) (activeDims m) (board m) (voids m) P2
+      in  m <# return (maybe NoOp AIMove pick)
   | otherwise = noEff m
 
 -- Apply a launcher move for the current player, then trigger AI if needed.
@@ -52,7 +52,8 @@ gameUpdate msg m = case msg of
 
   Restart ->
     let dims = selectedDims m
-    in  initModel { activeDims = dims, selectedDims = dims, gameMode = gameMode m }
+    in  initModel { activeDims = dims, selectedDims = dims
+                  , gameMode = gameMode m, difficulty = difficulty m }
         <# (SetVoids <$> liftIO (generateVoids dims))
 
   SetVoids vs ->
@@ -63,6 +64,9 @@ gameUpdate msg m = case msg of
 
   SelectMode mode ->
     noEff $ m { gameMode = mode }
+
+  SelectDiff diff ->
+    noEff $ m { difficulty = diff }
 
   SetHover ml ->
     noEff $ m { hoverL = ml }

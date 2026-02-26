@@ -12,7 +12,11 @@ build-type:         Simple
 
 executable crossfire
   main-is:          Main.hs
-  other-modules:    Types, Logic, View
+  other-modules:    Types, Logic,
+                    Strategies,
+                    Strategies.NaiveBestLauncher,
+                    Strategies.AlphaBetaPruning,
+                    View
   hs-source-dirs:   app
   build-depends:
       base          >= 4.7  && < 5
