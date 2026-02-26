@@ -1,0 +1,5 @@
+packages: .
+
+-- miso's transitive dependencies (servant etc.) haven't updated their
+-- 'base' upper bounds for GHC 9.14 / base-4.22 yet. Relax them here.
+allow-newer: all
