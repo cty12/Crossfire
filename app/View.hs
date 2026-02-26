@@ -204,6 +204,18 @@ voidCellView lx ly =
         ] []
   : crossPoly (lx + cellSize `div` 2) (ly + cellSize `div` 2)
 
+-- Small black dot in the top-left corner of the last placed stone's cell.
+lastPlacedDot :: Model -> [View Msg]
+lastPlacedDot model = case lastPlaced model of
+  Nothing     -> []
+  Just (c, r) ->
+    let rows = fst (activeDims model)
+        x    = boardX c + 6
+        y    = boardY rows r + 6
+    in  [ circle_ [ cx_ (ms x), cy_ (ms y), r_ "4", fill_ "black"
+                  , style_ $ Map.fromList [("pointerEvents", "none")]
+                  ] [] ]
+
 -- ─── Board SVG ───────────────────────────────────────────────────────────────
 
 boardSvg :: Model -> View Msg
@@ -226,6 +238,7 @@ boardSvg model =
          , r      <- [0 .. rows - 1]
          , Just p <- [Map.lookup (c, r) (board model)]
          ]
+      ++ lastPlacedDot model
       ++ landingPreview model
       ++ concatMap (launcherCell model) (allLaunchers dims)
       )

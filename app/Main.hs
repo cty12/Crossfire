@@ -37,11 +37,12 @@ handleLaunch m launcher =
                 | hasWon dims b' pos (curPlayer m) = Won (curPlayer m)
                 | Map.size b' == capacity          = Draw
                 | otherwise                        = Playing
-              m' = m { board     = b'
-                     , phase     = newPhase
-                     , curPlayer = case newPhase of
-                                     Playing -> nextPlayer (curPlayer m)
-                                     _       -> curPlayer m
+              m' = m { board       = b'
+                     , phase       = newPhase
+                     , curPlayer   = case newPhase of
+                                       Playing -> nextPlayer (curPlayer m)
+                                       _       -> curPlayer m
+                     , lastPlaced  = Just pos
                      }
           in  triggerAI m'
 

@@ -50,6 +50,7 @@ data Model = Model
   , voids        :: Set (Int, Int)    -- interior void cells for the current game
   , gameMode     :: GameMode
   , difficulty   :: Difficulty
+  , lastPlaced   :: Maybe (Int, Int)    -- most recently placed stone
   } deriving (Eq, Show)
 
 data Msg

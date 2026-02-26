@@ -20,6 +20,7 @@ initModel = Model
   , voids        = Set.empty
   , gameMode     = PvC
   , difficulty   = defaultDifficulty
+  , lastPlaced   = Nothing
   }
 
 -- ─── Game Logic ──────────────────────────────────────────────────────────────
