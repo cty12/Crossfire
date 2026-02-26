@@ -1,9 +1,13 @@
+{-# LANGUAGE CPP #-}
 module Main where
 
 import           Miso
 import           Control.Monad.IO.Class (liftIO)
 import qualified Data.Map.Strict                  as Map
 import qualified Data.Set                         as Set
+#ifndef ghcjs_HOST_OS
+import           Language.Javascript.JSaddle.Warp (run)
+#endif
 
 import Logic
 import Types
@@ -77,7 +81,11 @@ gameUpdate msg m = case msg of
 -- ─── Entry Point ─────────────────────────────────────────────────────────────
 
 main :: IO ()
+#ifdef ghcjs_HOST_OS
 main = startApp App
+#else
+main = run 8080 $ startApp App
+#endif
   { model         = initModel
   , update        = gameUpdate
   , view          = gameView
