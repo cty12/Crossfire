@@ -3,8 +3,7 @@ module Strategies.AlphaBetaPruning (bestLauncherAlphaBeta) where
 
 import qualified Data.Map.Strict as Map
 import           Data.Set        (Set)
-import           Data.List       (maximumBy, partition, nubBy)
-import           Data.Function   (on)
+import           Data.List       (maximumBy, partition)
 import           Data.Maybe      (mapMaybe)
 import           Data.Ord        (comparing)
 
@@ -44,8 +43,7 @@ evaluate dims b = sum
 -- Launchers paired with their landing positions, in move order:
 -- winning moves first, then opponent blocks, then the rest.
 orderedMoves :: Dims -> Board -> Set Coord -> Player -> [(Launcher, Coord)]
--- Multiple launchers can land on the same cell; deduplicate to avoid redundant subtrees.
-orderedMoves dims b vs p = nubBy ((==) `on` snd) (wins ++ blocks ++ rest)
+orderedMoves dims b vs p = wins ++ blocks ++ rest
   where
     opp             = nextPlayer p
     all_            = mapMaybe (\l -> fmap (l,) (launchStone dims b vs l))
