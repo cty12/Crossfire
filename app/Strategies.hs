@@ -7,7 +7,7 @@ import Strategies.NaiveBestLauncher (bestLauncherNaive)
 import Strategies.AlphaBetaPruning  (bestLauncherAlphaBeta)
 
 -- A strategy is a function that picks a launcher for the given player.
-type Strategy = Dims -> Board -> Set (Int, Int) -> Player -> Maybe Launcher
+type Strategy = Dims -> Board -> Set Coord -> Player -> Maybe Launcher
 
 strategyFor :: Difficulty -> Strategy
 strategyFor Easy = bestLauncherNaive

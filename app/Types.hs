@@ -15,7 +15,9 @@ cellSize = 64
 
 data Player = P1 | P2 deriving (Eq, Show)
 
-type Board = Map (Int, Int) Player
+type Coord = (Int, Int)
+
+type Board = Map Coord Player
 
 data Phase = Playing | Won Player | Draw deriving (Eq, Show)
 
@@ -47,10 +49,10 @@ data Model = Model
   , hoverL       :: Maybe Launcher
   , activeDims   :: Dims              -- dimensions of the current game
   , selectedDims :: Dims              -- pending selection from the dropdown
-  , voids        :: Set (Int, Int)    -- interior void cells for the current game
+  , voids        :: Set Coord         -- interior void cells for the current game
   , gameMode     :: GameMode
   , difficulty   :: Difficulty
-  , lastPlaced   :: Maybe (Int, Int)    -- most recently placed stone
+  , lastPlaced   :: Maybe Coord         -- most recently placed stone
   } deriving (Eq, Show)
 
 data Msg
@@ -59,7 +61,7 @@ data Msg
   | SetHover   (Maybe Launcher)
   | Restart
   | SelectSize Dims
-  | SetVoids   (Set (Int, Int))
+  | SetVoids   (Set Coord)
   | SelectMode GameMode
   | SelectDiff Difficulty
   | NoOp

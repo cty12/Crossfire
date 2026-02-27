@@ -29,11 +29,11 @@ nextPlayer :: Player -> Player
 nextPlayer P1 = P2
 nextPlayer P2 = P1
 
-inBounds :: Dims -> Int -> Int -> Bool
-inBounds (rows, cols) c r = c >= 0 && c < cols && r >= 0 && r < rows
+inBounds :: Dims -> Coord -> Bool
+inBounds (rows, cols) (c, r) = c >= 0 && c < cols && r >= 0 && r < rows
 
 -- Entry position (just outside the board) and travel direction for a launcher.
-launcherEntry :: Dims -> Launcher -> (Int, Int)
+launcherEntry :: Dims -> Launcher -> Coord
 launcherEntry (rows, _   ) (TopL    c) = (c,    rows)
 launcherEntry _            (BottomL c) = (c,    -1  )
 launcherEntry _            (LeftL   r) = (-1,   r   )
@@ -48,26 +48,26 @@ launcherDir (RightL  _) = (-1,  0)
 -- Compute where a stone lands when fired from a launcher.
 -- Travels until hitting an occupied cell, a void, or the far wall.
 -- Returns the last empty non-void cell, or Nothing if the path is fully blocked.
-launchStone :: Dims -> Board -> Set (Int, Int) -> Launcher -> Maybe (Int, Int)
-launchStone dims b vs launcher = go (ec + dc) (er + dr) Nothing
+launchStone :: Dims -> Board -> Set Coord -> Launcher -> Maybe Coord
+launchStone dims b vs launcher = go (ec + dc, er + dr) Nothing
   where
     (ec, er) = launcherEntry dims launcher
     (dc, dr) = launcherDir        launcher
-    go c r acc
-      | not (inBounds dims c r) = acc
-      | Map.member (c, r) b     = acc
-      | Set.member (c, r) vs    = acc
-      | otherwise               = go (c + dc) (r + dr) (Just (c, r))
+    go pos@(c, r) acc
+      | not (inBounds dims pos) = acc
+      | Map.member pos b        = acc
+      | Set.member pos vs       = acc
+      | otherwise               = go (c + dc, r + dr) (Just pos)
 
 -- Count consecutive same-colour stones from 'pos' along direction '(dc, dr)'.
-consec :: Dims -> Board -> Player -> (Int, Int) -> (Int, Int) -> Int
+consec :: Dims -> Board -> Player -> Coord -> (Int, Int) -> Int
 consec dims b p (col, row) (dc, dr) =
   length $ takeWhile inLine [(col + dc * i, row + dr * i) | i <- [0 .. winLength - 1]]
   where
-    inLine (c, r) = inBounds dims c r && Map.lookup (c, r) b == Just p
+    inLine pos = inBounds dims pos && Map.lookup pos b == Just p
 
 -- Check all four axes through a position for a win.
-hasWon :: Dims -> Board -> (Int, Int) -> Player -> Bool
+hasWon :: Dims -> Board -> Coord -> Player -> Bool
 hasWon dims b pos p = any checkAxis [(1,0), (0,1), (1,1), (1,-1)]
   where
     checkAxis (dc, dr) =
@@ -81,7 +81,7 @@ allLaunchers (rows, cols) =
   ++ map RightL  [0 .. rows - 1]
 
 -- Randomly place ~1/8 of the board's cells as voids.
-generateVoids :: Dims -> IO (Set (Int, Int))
+generateVoids :: Dims -> IO (Set Coord)
 generateVoids (rows, cols) = go Set.empty
   where
     n = rows * cols `div` 8

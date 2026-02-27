@@ -11,7 +11,7 @@ import Logic (nextPlayer, allLaunchers, launchStone, hasWon, consec)
 
 -- Choose the best launcher for player 'p'.
 -- Priority: (1) immediate win, (2) block opponent win, (3) maximise streak.
-bestLauncherNaive :: Dims -> Board -> Set (Int, Int) -> Player -> Maybe Launcher
+bestLauncherNaive :: Dims -> Board -> Set Coord -> Player -> Maybe Launcher
 bestLauncherNaive dims b vs p =
   case filter winsNow valid of
     (l:_) -> Just l

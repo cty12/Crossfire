@@ -42,7 +42,7 @@ evaluate dims b = sum
 
 -- Launchers paired with their landing positions, in move order:
 -- winning moves first, then opponent blocks, then the rest.
-orderedMoves :: Dims -> Board -> Set (Int,Int) -> Player -> [(Launcher, (Int,Int))]
+orderedMoves :: Dims -> Board -> Set Coord -> Player -> [(Launcher, Coord)]
 orderedMoves dims b vs p = wins ++ blocks ++ rest
   where
     opp             = nextPlayer p
@@ -56,7 +56,7 @@ orderedMoves dims b vs p = wins ++ blocks ++ rest
 -- Minimax with alpha-beta pruning.
 -- Score is always from P2's (maximiser) perspective.
 -- alpha = lower bound for maximiser, beta = upper bound for minimiser.
-alphaBeta :: Dims -> Board -> Set (Int,Int) -> Player -> Int -> Int -> Int -> Int
+alphaBeta :: Dims -> Board -> Set Coord -> Player -> Int -> Int -> Int -> Int
 alphaBeta dims b vs player depth alpha beta
   | depth == 0 = evaluate dims b
   | null moves = evaluate dims b
@@ -84,7 +84,7 @@ alphaBeta dims b vs player depth alpha beta
 -- ─── Public Interface ────────────────────────────────────────────────────────
 
 -- Pick the best launcher for the computer (P2) using alpha-beta search.
-bestLauncherAlphaBeta :: Dims -> Board -> Set (Int,Int) -> Player -> Maybe Launcher
+bestLauncherAlphaBeta :: Dims -> Board -> Set Coord -> Player -> Maybe Launcher
 bestLauncherAlphaBeta dims b vs p =
   case orderedMoves dims b vs p of
     []    -> Nothing
