@@ -27,15 +27,16 @@ triggerAI m
 -- Apply a launcher move for the current player, then trigger AI if needed.
 handleLaunch :: Model -> Launcher -> Effect Msg Model
 handleLaunch m launcher =
-  let dims@(rows, cols) = activeDims m
+  let dims@(Dims numRows numCols) = activeDims m
   in  case launchStone dims (board m) (voids m) launcher of
         Nothing  -> noEff m
         Just pos ->
           let b'       = Map.insert pos (curPlayer m) (board m)
-              capacity = rows * cols - Set.size (voids m)
+              capacity = numRows * numCols - Set.size (voids m)
               newPhase
                 | hasWon dims b' pos (curPlayer m) = Won (curPlayer m)
                 | Map.size b' == capacity          = Draw
+                | not (hasLegalLaunch dims b' (voids m)) = Draw
                 | otherwise                        = Playing
               m' = m { board       = b'
                      , phase       = newPhase

@@ -15,17 +15,23 @@ cellSize = 64
 
 data Player = P1 | P2 deriving (Eq, Show)
 
-type Coord = (Int, Int)
+data Coord = Coord
+  { col :: Int
+  , row :: Int
+  } deriving (Eq, Ord, Show)
 
 type Board = Map Coord Player
 
 data Phase = Playing | Won Player | Draw deriving (Eq, Show)
 
 -- Board dimensions as (rows, cols).
-type Dims = (Int, Int)
+data Dims = Dims
+  { rows :: Int
+  , cols :: Int
+  } deriving (Eq, Show)
 
 defaultDims :: Dims
-defaultDims = (8, 8)
+defaultDims = Dims 8 8
 
 data GameMode = PvP | PvC deriving (Eq, Show)
 

@@ -35,13 +35,13 @@ controlStyle = Map.fromList
 
 -- Encode (rows, cols) as "rows,cols" for use as an option value.
 encodeDims :: Dims -> MisoString
-encodeDims (rows, cols) = ms (show rows ++ "," ++ show cols)
+encodeDims (Dims numRows numCols) = ms (show numRows ++ "," ++ show numCols)
 
 -- Decode "rows,cols" back to (rows, cols).
 decodeDims :: MisoString -> Dims
 decodeDims s =
   let (rs, rest) = break (== ',') (fromMisoString s)
-  in  (read rs, read (drop 1 rest))
+  in  Dims (read rs) (read (drop 1 rest))
 
 encodeMode :: GameMode -> MisoString
 encodeMode PvP = "pvp"
@@ -108,9 +108,9 @@ gameView model =
           , value_   (encodeDims (selectedDims model))
           , style_   controlStyle
           ]
-          [ option_ [ value_ "8,8",   selected_ (selectedDims model == (8,8))   ] [ text "8×8"   ]
-          , option_ [ value_ "8,12",  selected_ (selectedDims model == (8,12))  ] [ text "8×12"  ]
-          , option_ [ value_ "12,12", selected_ (selectedDims model == (12,12)) ] [ text "12×12" ]
+          [ option_ [ value_ "8,8",   selected_ (selectedDims model == Dims 8 8)   ] [ text "8×8"   ]
+          , option_ [ value_ "8,12",  selected_ (selectedDims model == Dims 8 12)  ] [ text "8×12"  ]
+          , option_ [ value_ "12,12", selected_ (selectedDims model == Dims 12 12) ] [ text "12×12" ]
           ]
       , button_ [ onClick Restart, style_ controlStyle ] [ text "New Game" ]
       ])
@@ -128,24 +128,24 @@ statusMsg model = case phase model of
 -- The board is offset by one cell in each direction to make room for launchers.
 
 boardX :: Int -> Int
-boardX col = (col + 1) * cellSize
+boardX c = (c + 1) * cellSize
 
 boardY :: Int -> Int -> Int   -- rows row; row 0 = bottom
-boardY rows row = (rows - row) * cellSize
+boardY numRows r = (numRows - r) * cellSize
 
 boardCX :: Int -> Int
-boardCX col = boardX col + cellSize `div` 2
+boardCX c = boardX c + cellSize `div` 2
 
 boardCY :: Int -> Int -> Int
-boardCY rows row = boardY rows row + cellSize `div` 2
+boardCY numRows r = boardY numRows r + cellSize `div` 2
 
 -- SVG top-left corner of a launcher cell.
 launcherXY :: Dims -> Launcher -> (Int, Int)
-launcherXY (rows, cols) launcher = case launcher of
+launcherXY (Dims numRows numCols) launcher = case launcher of
   TopL    c -> (boardX c,                    0)
-  BottomL c -> (boardX c,                    (rows + 1) * cellSize)
-  LeftL   r -> (0,                           boardY rows r)
-  RightL  r -> ((cols + 1) * cellSize,       boardY rows r)
+  BottomL c -> (boardX c,                    (numRows + 1) * cellSize)
+  LeftL   r -> (0,                           boardY numRows r)
+  RightL  r -> ((numCols + 1) * cellSize,    boardY numRows r)
 
 -- Arrow direction in SVG pixel space (y-axis points down).
 launcherArrowDir :: Launcher -> (Int, Int)
@@ -208,10 +208,10 @@ voidCellView lx ly =
 lastPlacedDot :: Model -> [View Msg]
 lastPlacedDot model = case lastPlaced model of
   Nothing     -> []
-  Just (c, r) ->
-    let rows = fst (activeDims model)
-        x    = boardX c + 6
-        y    = boardY rows r + 6
+  Just (Coord c r) ->
+    let Dims totalRows _ = activeDims model
+        x                = boardX c + 6
+        y                = boardY totalRows r + 6
     in  [ circle_ [ cx_ (ms x), cy_ (ms y), r_ "4", fill_ "black"
                   , style_ $ Map.fromList [("pointerEvents", "none")]
                   ] [] ]
@@ -220,9 +220,9 @@ lastPlacedDot model = case lastPlaced model of
 
 boardSvg :: Model -> View Msg
 boardSvg model =
-  let dims@(rows, cols) = activeDims model
-      svgW = ms ((cols + 2) * cellSize)
-      svgH = ms ((rows + 2) * cellSize)
+  let dims@(Dims totalRows totalCols) = activeDims model
+      svgW = ms ((totalCols + 2) * cellSize)
+      svgH = ms ((totalRows + 2) * cellSize)
   in  svg_ [ width_ svgW, height_ svgH
            , style_ $ Map.fromList
                [ ("display",  "block")
@@ -231,12 +231,16 @@ boardSvg model =
                ]
            ]
       (  voidCells dims
-      ++ [ cellRect rows c r | c <- [0 .. cols - 1], r <- [0 .. rows - 1] ]
-      ++ concatMap (\(c,r) -> voidCellView (boardX c) (boardY rows r)) (Set.toList (voids model))
-      ++ [ stoneDot rows p c r
-         | c      <- [0 .. cols - 1]
-         , r      <- [0 .. rows - 1]
-         , Just p <- [Map.lookup (c, r) (board model)]
+      ++ [ cellRect totalRows c r
+         | c <- [0 .. totalCols - 1]
+         , r <- [0 .. totalRows - 1]
+         ]
+      ++ concatMap (\(Coord c r) -> voidCellView (boardX c) (boardY totalRows r))
+                   (Set.toList (voids model))
+      ++ [ stoneDot totalRows p c r
+         | c      <- [0 .. totalCols - 1]
+         , r      <- [0 .. totalRows - 1]
+         , Just p <- [Map.lookup (Coord c r) (board model)]
          ]
       ++ lastPlacedDot model
       ++ landingPreview model
@@ -245,19 +249,19 @@ boardSvg model =
 
 -- Void cells at the four corners: no launcher, marked with a bold × symbol.
 voidCells :: Dims -> [View Msg]
-voidCells (rows, cols) = concatMap (uncurry voidCellView)
+voidCells (Dims numRows numCols) = concatMap (uncurry voidCellView)
   [ (0,                    0)
-  , ((cols + 1) * cellSize, 0)
-  , (0,                    (rows + 1) * cellSize)
-  , ((cols + 1) * cellSize, (rows + 1) * cellSize)
+  , ((numCols + 1) * cellSize, 0)
+  , (0,                       (numRows + 1) * cellSize)
+  , ((numCols + 1) * cellSize, (numRows + 1) * cellSize)
   ]
 
 -- One board grid cell: white with black border.
 cellRect :: Int -> Int -> Int -> View Msg
-cellRect rows col row =
+cellRect numRows c r =
   rect_
-    [ x_      (ms (boardX col))
-    , y_      (ms (boardY rows row))
+    [ x_      (ms (boardX c))
+    , y_      (ms (boardY numRows r))
     , width_  (ms cellSize)
     , height_ (ms cellSize)
     , fill_   "white"
@@ -270,12 +274,12 @@ landingPreview :: Model -> [View Msg]
 landingPreview model
   | phase model /= Playing = []
   | otherwise =
-      let dims@(rows, _) = activeDims model
+      let dims@(Dims totalRows _) = activeDims model
       in  case hoverL model >>= launchStone dims (board model) (voids model) of
             Nothing       -> []
-            Just (lc, lr) ->
+            Just (Coord lc lr) ->
               [ rect_
-                  [ x_ (ms (boardX lc)), y_ (ms (boardY rows lr))
+                  [ x_ (ms (boardX lc)), y_ (ms (boardY totalRows lr))
                   , width_ (ms cellSize), height_ (ms cellSize)
                   , style_ $ Map.fromList
                       [ ("fill",          "rgba(0,0,0,0.15)")
@@ -287,13 +291,17 @@ landingPreview model
 
 -- P1 → red circle, P2 → blue upward triangle.
 stoneDot :: Int -> Player -> Int -> Int -> View Msg
-stoneDot rows p col row =
-  let cx     = boardCX col
-      cy     = boardCY rows row
-      r      = cellSize `div` 2 - 5
-      triPts = ptsStr [(cx, cy - 3*r `div` 4), (cx - r, cy + 3*r `div` 4), (cx + r, cy + 3*r `div` 4)]
+stoneDot numRows p c r =
+  let cx     = boardCX c
+      cy     = boardCY numRows r
+      radius = cellSize `div` 2 - 5
+      triPts = ptsStr
+        [ (cx,          cy - 3 * radius `div` 4)
+        , (cx - radius, cy + 3 * radius `div` 4)
+        , (cx + radius, cy + 3 * radius `div` 4)
+        ]
   in case p of
-       P1 -> circle_  [ cx_ (ms cx), cy_ (ms cy), r_ (ms r), fill_ "red"  ] []
+       P1 -> circle_  [ cx_ (ms cx), cy_ (ms cy), r_ (ms radius), fill_ "red" ] []
        P2 -> polygon_ [ fill_ "blue", points_ triPts ] []
 
 -- A launcher cell: white clickable background + bold directional arrow.
