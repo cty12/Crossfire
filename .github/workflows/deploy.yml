@@ -57,7 +57,7 @@ jobs:
           fi
           cp favicon.svg site/
           if [ -f site/index.html ]; then
-            perl -0pi -e 's|<title>.*?</title>|<title>Crossfire</title>|s; s|</head>|  <link rel="icon" href="favicon.svg" type="image/svg+xml">\n</head>| unless /rel="icon"/' site/index.html
+            perl -0pi -e 'if (/<title>.*?<\/title>/s) { s|<title>.*?</title>|<title>Crossfire</title>|s; } else { s|<head>|<head>\n    <title>Crossfire</title>|; } s|</head>|  <link rel="icon" href="favicon.svg" type="image/svg+xml">\n</head>| unless /rel="icon"/;' site/index.html
           fi
 
       - uses: actions/upload-pages-artifact@v3
