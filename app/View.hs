@@ -59,6 +59,14 @@ decodeDiff :: MisoString -> Difficulty
 decodeDiff "hard" = Hard
 decodeDiff _      = Easy
 
+encodeTurnOrder :: TurnOrder -> MisoString
+encodeTurnOrder HumanFirst = "human"
+encodeTurnOrder ComputerFirst = "computer"
+
+decodeTurnOrder :: MisoString -> TurnOrder
+decodeTurnOrder "computer" = ComputerFirst
+decodeTurnOrder _          = HumanFirst
+
 gameView :: Model -> View Msg
 gameView model =
   div_ [ style_ $ Map.fromList
@@ -101,6 +109,16 @@ gameView model =
                  [ option_ [ value_ "easy", selected_ (difficulty model == Easy) ] [ text "Easy" ]
                  , option_ [ value_ "hard", selected_ (difficulty model == Hard) ] [ text "Hard" ]
                  ]
+             , select_
+                 [ onChange (SelectTurnOrder . decodeTurnOrder)
+                 , value_   (encodeTurnOrder (selectedTurnOrder model))
+                 , style_   controlStyle
+                 ]
+                 [ option_ [ value_ "human", selected_ (selectedTurnOrder model == HumanFirst) ]
+                           [ text "Human first" ]
+                 , option_ [ value_ "computer", selected_ (selectedTurnOrder model == ComputerFirst) ]
+                           [ text "Computer first" ]
+                 ]
              ]
         else []) ++
       [ select_
@@ -119,7 +137,7 @@ gameView model =
 statusMsg :: Model -> MisoString
 statusMsg model = case phase model of
   Playing -> case gameMode model of
-               PvC | curPlayer model == P2 -> "Computer's turn"
+               PvC | not (isHumanTurn model) -> "Computer's turn"
                _                           -> playerName (curPlayer model) <> "'s turn"
   Won p   -> playerName p <> " wins!"
   Draw    -> "It's a draw!"

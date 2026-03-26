@@ -20,6 +20,8 @@ initModel = Model
   , voids        = Set.empty
   , gameMode     = PvC
   , difficulty   = defaultDifficulty
+  , turnOrder    = defaultTurnOrder
+  , selectedTurnOrder = defaultTurnOrder
   , lastPlaced   = Nothing
   }
 
@@ -28,6 +30,14 @@ initModel = Model
 nextPlayer :: Player -> Player
 nextPlayer P1 = P2
 nextPlayer P2 = P1
+
+humanPlayer :: Model -> Player
+humanPlayer m = case turnOrder m of
+  HumanFirst    -> P1
+  ComputerFirst -> P2
+
+computerPlayer :: Model -> Player
+computerPlayer = nextPlayer . humanPlayer
 
 inBounds :: Dims -> Coord -> Bool
 inBounds (Dims numRows numCols) (Coord c r) =
@@ -116,4 +126,4 @@ generateVoids (Dims numRows numCols) = go Set.empty
 
 -- True when it is a human player's turn to act.
 isHumanTurn :: Model -> Bool
-isHumanTurn m = gameMode m == PvP || curPlayer m == P1
+isHumanTurn m = gameMode m == PvP || curPlayer m == humanPlayer m

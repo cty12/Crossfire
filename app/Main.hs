@@ -19,8 +19,9 @@ import View
 -- Trigger an AI move if it is the computer's turn.
 triggerAI :: Model -> Effect Msg Model
 triggerAI m
-  | gameMode m == PvC, curPlayer m == P2, phase m == Playing =
-      let pick = strategyFor (difficulty m) (activeDims m) (board m) (voids m) P2
+  | gameMode m == PvC, curPlayer m == computerPlayer m, phase m == Playing =
+      let aiPlayer = computerPlayer m
+          pick = strategyFor (difficulty m) (activeDims m) (board m) (voids m) aiPlayer
       in  m <# return (maybe NoOp AIMove pick)
   | otherwise = noEff m
 
@@ -55,11 +56,13 @@ gameUpdate msg m = case msg of
   Restart ->
     let dims = selectedDims m
     in  initModel { activeDims = dims, selectedDims = dims
-                  , gameMode = gameMode m, difficulty = difficulty m }
+                  , gameMode = gameMode m, difficulty = difficulty m
+                  , turnOrder = selectedTurnOrder m
+                  , selectedTurnOrder = selectedTurnOrder m }
         <# (SetVoids <$> liftIO (generateVoids dims))
 
   SetVoids vs ->
-    noEff $ m { voids = vs }
+    triggerAI $ m { voids = vs }
 
   SelectSize dims ->
     noEff $ m { selectedDims = dims }
@@ -69,6 +72,9 @@ gameUpdate msg m = case msg of
 
   SelectDiff diff ->
     noEff $ m { difficulty = diff }
+
+  SelectTurnOrder order ->
+    noEff $ m { selectedTurnOrder = order }
 
   SetHover ml ->
     noEff $ m { hoverL = ml }

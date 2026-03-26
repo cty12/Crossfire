@@ -40,6 +40,11 @@ data Difficulty = Easy | Hard deriving (Eq, Show)
 defaultDifficulty :: Difficulty
 defaultDifficulty = Hard
 
+data TurnOrder = HumanFirst | ComputerFirst deriving (Eq, Show)
+
+defaultTurnOrder :: TurnOrder
+defaultTurnOrder = HumanFirst
+
 -- A launcher sits just outside one edge of the board and fires inward.
 data Launcher
   = TopL    Int   -- column, fires downward
@@ -58,6 +63,8 @@ data Model = Model
   , voids        :: Set Coord         -- interior void cells for the current game
   , gameMode     :: GameMode
   , difficulty   :: Difficulty
+  , turnOrder    :: TurnOrder         -- active first-player setting
+  , selectedTurnOrder :: TurnOrder    -- pending selection from the dropdown
   , lastPlaced   :: Maybe Coord         -- most recently placed stone
   } deriving (Eq, Show)
 
@@ -70,5 +77,6 @@ data Msg
   | SetVoids   (Set Coord)
   | SelectMode GameMode
   | SelectDiff Difficulty
+  | SelectTurnOrder TurnOrder
   | NoOp
   deriving (Eq, Show)
