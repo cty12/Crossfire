@@ -12,32 +12,11 @@ import qualified Data.Set           as Set
 import Logic
 import Types
 
--- ─── View ────────────────────────────────────────────────────────────────────
+-- ─── Encode / Decode Helpers ────────────────────────────────────────────────
 
-playerName :: Player -> MisoString
-playerName P1 = "Red"
-playerName P2 = "Blue"
-
-playerColor :: Player -> MisoString
-playerColor P1 = "red"
-playerColor P2 = "blue"
-
-controlStyle :: Map.Map MisoString MisoString
-controlStyle = Map.fromList
-  [ ("padding",      "8px 24px")
-  , ("fontSize",     "1em")
-  , ("cursor",       "pointer")
-  , ("background",   "#ffffff")
-  , ("color",        "#000000")
-  , ("border",       "1px solid #000000")
-  , ("borderRadius", "4px")
-  ]
-
--- Encode (rows, cols) as "rows,cols" for use as an option value.
 encodeDims :: Dims -> MisoString
 encodeDims (Dims numRows numCols) = ms (show numRows ++ "," ++ show numCols)
 
--- Decode "rows,cols" back to (rows, cols).
 decodeDims :: MisoString -> Dims
 decodeDims s =
   let (rs, rest) = break (== ',') (fromMisoString s)
@@ -60,95 +39,38 @@ decodeDiff "hard" = Hard
 decodeDiff _      = Easy
 
 encodeTurnOrder :: TurnOrder -> MisoString
-encodeTurnOrder HumanFirst = "human"
+encodeTurnOrder HumanFirst    = "human"
 encodeTurnOrder ComputerFirst = "computer"
 
 decodeTurnOrder :: MisoString -> TurnOrder
 decodeTurnOrder "computer" = ComputerFirst
 decodeTurnOrder _          = HumanFirst
 
-gameView :: Model -> View Msg
-gameView model =
-  div_ [ style_ $ Map.fromList
-           [ ("fontFamily", "sans-serif")
-           , ("textAlign",  "center")
-           , ("padding",    "16px")
-           , ("background", "#ffffff")
-           , ("minHeight",  "100vh")
-           , ("color",      "#000000")
-           ]
-       ]
-  [ h1_ [] [ text "Crossfire" ]
-  , p_  [ style_ $ Map.fromList [("fontSize", "1.5em"), ("marginTop", "0")] ]
-        [ text "Launch stones, get 4 in a row" ]
-  , boardSvg model
-  , p_  [ style_ $ Map.fromList [("fontSize", "1.5em"), ("margin", "16px 0")] ]
-        [ text (statusMsg model) ]
-  , div_ [ style_ $ Map.fromList
-             [ ("display",        "flex")
-             , ("justifyContent", "center")
-             , ("alignItems",     "center")
-             , ("gap",            "8px")
-             ]
-         ]
-      ([ select_
-          [ onChange (SelectMode . decodeMode)
-          , value_   (encodeMode (gameMode model))
-          , style_   controlStyle
-          ]
-          [ option_ [ value_ "pvp", selected_ (gameMode model == PvP) ] [ text "PvP" ]
-          , option_ [ value_ "pvc", selected_ (gameMode model == PvC) ] [ text "PvC" ]
-          ]
-      ] ++
-      (if gameMode model == PvC
-        then [ select_
-                 [ onChange (SelectDiff . decodeDiff)
-                 , value_   (encodeDiff (difficulty model))
-                 , style_   controlStyle
-                 ]
-                 [ option_ [ value_ "easy", selected_ (difficulty model == Easy) ] [ text "Easy" ]
-                 , option_ [ value_ "hard", selected_ (difficulty model == Hard) ] [ text "Hard" ]
-                 ]
-             , select_
-                 [ onChange (SelectTurnOrder . decodeTurnOrder)
-                 , value_   (encodeTurnOrder (selectedTurnOrder model))
-                 , style_   controlStyle
-                 ]
-                 [ option_ [ value_ "human", selected_ (selectedTurnOrder model == HumanFirst) ]
-                           [ text "Human first" ]
-                 , option_ [ value_ "computer", selected_ (selectedTurnOrder model == ComputerFirst) ]
-                           [ text "Computer first" ]
-                 ]
-             ]
-        else []) ++
-      [ select_
-          [ onChange (SelectSize . decodeDims)
-          , value_   (encodeDims (selectedDims model))
-          , style_   controlStyle
-          ]
-          [ option_ [ value_ "8,8",   selected_ (selectedDims model == Dims 8 8)   ] [ text "8×8"   ]
-          , option_ [ value_ "8,12",  selected_ (selectedDims model == Dims 8 12)  ] [ text "8×12"  ]
-          , option_ [ value_ "12,12", selected_ (selectedDims model == Dims 12 12) ] [ text "12×12" ]
-          ]
-      , button_ [ onClick Restart, style_ controlStyle ] [ text "New Game" ]
-      ])
-  ]
+-- ─── Player Helpers ─────────────────────────────────────────────────────────
+
+playerName :: Player -> MisoString
+playerName P1 = "Red"
+playerName P2 = "Blue"
+
+playerColor :: Player -> MisoString
+playerColor P1 = "red"
+playerColor P2 = "blue"
 
 statusMsg :: Model -> MisoString
 statusMsg model = case phase model of
   Playing -> case gameMode model of
                PvC | not (isHumanTurn model) -> "Computer's turn"
-               _                           -> playerName (curPlayer model) <> "'s turn"
+               _                             -> playerName (curPlayer model) <> "'s turn"
   Won p   -> playerName p <> " wins!"
   Draw    -> "It's a draw!"
 
--- ─── SVG Coordinate Helpers ──────────────────────────────────────────────────
+-- ─── SVG Coordinate Helpers ─────────────────────────────────────────────────
 -- The board is offset by one cell in each direction to make room for launchers.
 
 boardX :: Int -> Int
 boardX c = (c + 1) * cellSize
 
-boardY :: Int -> Int -> Int   -- rows row; row 0 = bottom
+boardY :: Int -> Int -> Int
 boardY numRows r = (numRows - r) * cellSize
 
 boardCX :: Int -> Int
@@ -157,7 +79,6 @@ boardCX c = boardX c + cellSize `div` 2
 boardCY :: Int -> Int -> Int
 boardCY numRows r = boardY numRows r + cellSize `div` 2
 
--- SVG top-left corner of a launcher cell.
 launcherXY :: Dims -> Launcher -> (Int, Int)
 launcherXY (Dims numRows numCols) launcher = case launcher of
   TopL    c -> (boardX c,                    0)
@@ -165,14 +86,14 @@ launcherXY (Dims numRows numCols) launcher = case launcher of
   LeftL   r -> (0,                           boardY numRows r)
   RightL  r -> ((numCols + 1) * cellSize,    boardY numRows r)
 
--- Arrow direction in SVG pixel space (y-axis points down).
 launcherArrowDir :: Launcher -> (Int, Int)
 launcherArrowDir (TopL    _) = ( 0,  1)
 launcherArrowDir (BottomL _) = ( 0, -1)
 launcherArrowDir (LeftL   _) = ( 1,  0)
 launcherArrowDir (RightL  _) = (-1,  0)
 
--- Format a list of (x,y) pairs as an SVG points string.
+-- ─── SVG Primitives ─────────────────────────────────────────────────────────
+
 ptsStr :: [(Int, Int)] -> MisoString
 ptsStr ps = ms $ unwords [show x ++ "," ++ show y | (x, y) <- ps]
 
@@ -212,6 +133,20 @@ crossPoly cx cy =
                      ] []
   in  [mkPoly strip1, mkPoly strip2]
 
+-- ─── Board Cells ────────────────────────────────────────────────────────────
+
+cellRect :: Int -> Int -> Int -> View Msg
+cellRect numRows c r =
+  rect_
+    [ x_      (ms (boardX c))
+    , y_      (ms (boardY numRows r))
+    , width_  (ms cellSize)
+    , height_ (ms cellSize)
+    , fill_   "white"
+    , style_  $ Map.fromList [("stroke", "black"), ("stroke-width", "2")]
+    ]
+    []
+
 -- White cell with a bold × symbol at SVG position (lx, ly).
 voidCellView :: Int -> Int -> [View Msg]
 voidCellView lx ly =
@@ -221,6 +156,30 @@ voidCellView lx ly =
         , style_ $ Map.fromList [("stroke", "black"), ("stroke-width", "2")]
         ] []
   : crossPoly (lx + cellSize `div` 2) (ly + cellSize `div` 2)
+
+-- Void cells at the four corners.
+voidCells :: Dims -> [View Msg]
+voidCells (Dims numRows numCols) = concatMap (uncurry voidCellView)
+  [ (0,                         0)
+  , ((numCols + 1) * cellSize,  0)
+  , (0,                         (numRows + 1) * cellSize)
+  , ((numCols + 1) * cellSize,  (numRows + 1) * cellSize)
+  ]
+
+-- P1 → red circle, P2 → blue upward triangle.
+stoneDot :: Int -> Player -> Int -> Int -> View Msg
+stoneDot numRows p c r =
+  let cx     = boardCX c
+      cy     = boardCY numRows r
+      radius = cellSize `div` 2 - 5
+      triPts = ptsStr
+        [ (cx,          cy - 3 * radius `div` 4)
+        , (cx - radius, cy + 3 * radius `div` 4)
+        , (cx + radius, cy + 3 * radius `div` 4)
+        ]
+  in case p of
+       P1 -> circle_  [ cx_ (ms cx), cy_ (ms cy), r_ (ms radius), fill_ "red" ] []
+       P2 -> polygon_ [ fill_ "blue", points_ triPts ] []
 
 -- Small black dot in the top-left corner of the last placed stone's cell.
 lastPlacedDot :: Model -> [View Msg]
@@ -234,7 +193,61 @@ lastPlacedDot model = case lastPlaced model of
                   , style_ $ Map.fromList [("pointerEvents", "none")]
                   ] [] ]
 
--- ─── Board SVG ───────────────────────────────────────────────────────────────
+-- Highlight the predicted landing cell when hovering a launcher.
+landingPreview :: Model -> [View Msg]
+landingPreview model
+  | phase model /= Playing = []
+  | otherwise =
+      let dims@(Dims totalRows _) = activeDims model
+      in  case hoverL model >>= launchStone dims (board model) (voids model) of
+            Nothing       -> []
+            Just (Coord lc lr) ->
+              [ rect_
+                  [ x_ (ms (boardX lc)), y_ (ms (boardY totalRows lr))
+                  , width_ (ms cellSize), height_ (ms cellSize)
+                  , style_ $ Map.fromList
+                      [ ("fill",          "rgba(0,0,0,0.15)")
+                      , ("pointerEvents", "none")
+                      ]
+                  ]
+                  []
+              ]
+
+-- A launcher cell: white clickable background + bold directional arrow.
+launcherCell :: Model -> Launcher -> [View Msg]
+launcherCell model launcher =
+  let dims       = activeDims model
+      (lx, ly)   = launcherXY dims launcher
+      playable   = phase model == Playing
+                && isHumanTurn model
+                && launchStone dims (board model) (voids model) launcher /= Nothing
+      hovered    = hoverL model == Just launcher
+      arrowColor
+        | hovered && playable = playerColor (curPlayer model)
+        | playable            = "black"
+        | otherwise           = "#cccccc"
+  in  [ rect_
+          [ x_ (ms lx), y_ (ms ly)
+          , width_ (ms cellSize), height_ (ms cellSize)
+          , fill_ "white"
+          , style_ $ Map.fromList
+              [ ("stroke",       "black")
+              , ("stroke-width", "2")
+              , ("cursor",       if playable then "pointer" else "default")
+              ]
+          , onMouseEnter (SetHover (Just launcher))
+          , onMouseLeave (SetHover Nothing)
+          , onClick (Launch launcher)
+          ]
+          []
+      , arrowPoly
+          (lx + cellSize `div` 2)
+          (ly + cellSize `div` 2)
+          (launcherArrowDir launcher)
+          arrowColor
+      ]
+
+-- ─── Board SVG ──────────────────────────────────────────────────────────────
 
 boardSvg :: Model -> View Msg
 boardSvg model =
@@ -265,93 +278,78 @@ boardSvg model =
       ++ concatMap (launcherCell model) (allLaunchers dims)
       )
 
--- Void cells at the four corners: no launcher, marked with a bold × symbol.
-voidCells :: Dims -> [View Msg]
-voidCells (Dims numRows numCols) = concatMap (uncurry voidCellView)
-  [ (0,                    0)
-  , ((numCols + 1) * cellSize, 0)
-  , (0,                       (numRows + 1) * cellSize)
-  , ((numCols + 1) * cellSize, (numRows + 1) * cellSize)
+-- ─── Controls ───────────────────────────────────────────────────────────────
+
+controlStyle :: Map.Map MisoString MisoString
+controlStyle = Map.fromList
+  [ ("padding",      "4px 12px")
+  , ("fontSize",     "1em")
+  , ("fontWeight",   "500")
+  , ("cursor",       "pointer")
+  , ("background",   "#ffffff")
+  , ("color",        "#000000")
+  , ("border",       "2px solid #000000")
+  , ("borderRadius", "4px")
   ]
 
--- One board grid cell: white with black border.
-cellRect :: Int -> Int -> Int -> View Msg
-cellRect numRows c r =
-  rect_
-    [ x_      (ms (boardX c))
-    , y_      (ms (boardY numRows r))
-    , width_  (ms cellSize)
-    , height_ (ms cellSize)
-    , fill_   "white"
-    , style_  $ Map.fromList [("stroke", "black"), ("stroke-width", "2")]
+-- A styled dropdown: encode/decode pair, current value, and (value, label) options.
+dropdown :: Eq a => (a -> MisoString) -> (MisoString -> Msg) -> a -> [(a, MisoString)] -> View Msg
+dropdown encode toMsg current options =
+  select_
+    [ onChange toMsg, value_ (encode current), style_ controlStyle ]
+    [ option_ [ value_ (encode val), selected_ (current == val) ] [ text label ]
+    | (val, label) <- options
     ]
-    []
 
--- Highlight the predicted landing cell when hovering a launcher.
-landingPreview :: Model -> [View Msg]
-landingPreview model
-  | phase model /= Playing = []
-  | otherwise =
-      let dims@(Dims totalRows _) = activeDims model
-      in  case hoverL model >>= launchStone dims (board model) (voids model) of
-            Nothing       -> []
-            Just (Coord lc lr) ->
-              [ rect_
-                  [ x_ (ms (boardX lc)), y_ (ms (boardY totalRows lr))
-                  , width_ (ms cellSize), height_ (ms cellSize)
-                  , style_ $ Map.fromList
-                      [ ("fill",          "rgba(0,0,0,0.15)")
-                      , ("pointerEvents", "none")
-                      ]
-                  ]
-                  []
-              ]
+controlBar :: Model -> View Msg
+controlBar model =
+  div_ [ style_ $ Map.fromList
+           [ ("display",        "flex")
+           , ("justifyContent", "center")
+           , ("alignItems",     "center")
+           , ("gap",            "8px")
+           ]
+       ]
+  (  [ modeSelect ]
+  ++ pvcControls
+  ++ [ sizeSelect
+     , button_ [ onClick Restart, style_ controlStyle ] [ text "New Game" ]
+     ]
+  )
+  where
+    modeSelect = dropdown encodeMode (SelectMode . decodeMode) (gameMode model)
+      [ (PvP, "PvP"), (PvC, "PvC") ]
 
--- P1 → red circle, P2 → blue upward triangle.
-stoneDot :: Int -> Player -> Int -> Int -> View Msg
-stoneDot numRows p c r =
-  let cx     = boardCX c
-      cy     = boardCY numRows r
-      radius = cellSize `div` 2 - 5
-      triPts = ptsStr
-        [ (cx,          cy - 3 * radius `div` 4)
-        , (cx - radius, cy + 3 * radius `div` 4)
-        , (cx + radius, cy + 3 * radius `div` 4)
-        ]
-  in case p of
-       P1 -> circle_  [ cx_ (ms cx), cy_ (ms cy), r_ (ms radius), fill_ "red" ] []
-       P2 -> polygon_ [ fill_ "blue", points_ triPts ] []
-
--- A launcher cell: white clickable background + bold directional arrow.
-launcherCell :: Model -> Launcher -> [View Msg]
-launcherCell model launcher =
-  let dims    = activeDims model
-      (lx, ly) = launcherXY dims launcher
-      playable  = phase model == Playing
-               && isHumanTurn model
-               && launchStone dims (board model) (voids model) launcher /= Nothing
-      hovered   = hoverL model == Just launcher
-      arrowColor
-        | hovered && playable = playerColor (curPlayer model)
-        | playable            = "black"
-        | otherwise           = "#cccccc"
-  in  [ rect_
-          [ x_ (ms lx), y_ (ms ly)
-          , width_ (ms cellSize), height_ (ms cellSize)
-          , fill_ "white"
-          , style_ $ Map.fromList
-              [ ("stroke",       "black")
-              , ("stroke-width", "2")
-              , ("cursor",       if playable then "pointer" else "default")
-              ]
-          , onMouseEnter (SetHover (Just launcher))
-          , onMouseLeave (SetHover Nothing)
-          , onClick (Launch launcher)
+    pvcControls
+      | gameMode model /= PvC = []
+      | otherwise =
+          [ dropdown encodeDiff (SelectDiff . decodeDiff) (difficulty model)
+              [ (Easy, "Easy"), (Hard, "Hard") ]
+          , dropdown encodeTurnOrder (SelectTurnOrder . decodeTurnOrder) (selectedTurnOrder model)
+              [ (HumanFirst, "Human first"), (ComputerFirst, "Computer first") ]
           ]
-          []
-      , arrowPoly
-          (lx + cellSize `div` 2)
-          (ly + cellSize `div` 2)
-          (launcherArrowDir launcher)
-          arrowColor
-      ]
+
+    sizeSelect = dropdown encodeDims (SelectSize . decodeDims) (selectedDims model)
+      [ (Dims 8 8, "8×8"), (Dims 8 12, "8×12"), (Dims 12 12, "12×12") ]
+
+-- ─── Top-Level View ─────────────────────────────────────────────────────────
+
+gameView :: Model -> View Msg
+gameView model =
+  div_ [ style_ $ Map.fromList
+           [ ("fontFamily", "sans-serif")
+           , ("textAlign",  "center")
+           , ("padding",    "16px")
+           , ("background", "#ffffff")
+           , ("minHeight",  "100vh")
+           , ("color",      "#000000")
+           ]
+       ]
+  [ h1_ [] [ text "Crossfire" ]
+  , p_  [ style_ $ Map.fromList [("fontSize", "1.5em"), ("marginTop", "0")] ]
+        [ text "Launch stones, get 4 in a row" ]
+  , boardSvg model
+  , p_  [ style_ $ Map.fromList [("fontSize", "1.5em"), ("margin", "16px 0")] ]
+        [ text (statusMsg model) ]
+  , controlBar model
+  ]
